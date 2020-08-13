@@ -1,51 +1,84 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.25;
 
-contract Voting {
+contract Factory {
+    address[] public deployedCampaigns;
     
-    struct Candidate {
-        string name;
-        string scholarnumber;
-        uint votes;
+    function createCampaign(uint minimum) public {
+        address newCampaign = new Crowdfunding(minimum, msg.sender);
+        deployedCampaigns.push(newCampaign);
     }
     
-    Candidate[] public candidates;
+    function getDeployedContracts() public view returns(address[]) {
+        return deployedCampaigns;
+    }
+}
+
+contract Crowdfunding {
+    
+    struct Request {
+        string description;
+        uint256 value;
+        address recepient;
+        bool complete;
+        uint approvalCount;
+        mapping(address => bool) approvals;
+        
+    }
+    
+    Request[] public requests;
     address public manager;
-    mapping(address=>bool) voter;
-    mapping(address=>bool) registered;
-    uint totalVotes; 
+    uint256 public minimumContribution;
+    mapping(address => bool) public approvers;
+    uint approversCount;
     
     
-    modifier restricted() {
+    modifier restricted(){
         require(msg.sender==manager);
         _;
     }
     
-    constructor () public {
-        manager = msg.sender;
+    
+    constructor (uint minimum, address sender) public{
+        manager = sender;
+        minimumContribution = minimum;
     }
     
-    function registerToVote() public {
-        registered[msg.sender] = true;
-        voter[msg.sender] = false;
+    function contribute() public payable{
+        require(msg.value > minimumContribution);
+        
+        approvers[msg.sender] = true;
+        approversCount++;
     }
     
-    function registerAsCandidate(string n,string s) public restricted{
-        Candidate memory newCandidate = Candidate({
-            name: n,
-            scholarnumber: s,
-            votes: 0
+    function createRequest(string d , uint256 v, address r) public restricted{
+        Request memory newRequest = Request({
+            description: d,
+            value: v,
+            recepient: r,
+            complete: false,
+            approvalCount: 0
         });
-        candidates.push(newCandidate);
+        requests.push(newRequest);
     }
     
+    function approveRequest(uint256 index) public{
+        Request storage request = requests[index];
+        
+        require(approvers[msg.sender]);
+        require(!request.approvals[msg.sender]);
+        
+        request.approvals[msg.sender] = true;
+        request.approvalCount++;
+        
+    }
     
-    function vote(uint index) public{
-       require(registered[msg.sender]);
-       require(!voter[msg.sender]);
-       
-       totalVotes++;
-       voter[msg.sender] = true;
-       candidates[index].votes++;
+    function finalizeRequest(uint index) public restricted{
+        Request storage request = requests[index];
+        require(request.approvalCount > approversCount/2);
+        require(!request.complete);
+        
+        request.recepient.transfer(request.value);
+        request.complete = true;   
     }
     
 }
