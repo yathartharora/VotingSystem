@@ -1,84 +1,41 @@
-pragma solidity ^0.4.25;
+pragma experimental ABIEncoderV2;
+pragma solidity ^0.6.0;
 
-contract Factory {
-    address[] public deployedCampaigns;
+contract Voting{
     
-    function createCampaign(uint minimum) public {
-        address newCampaign = new Crowdfunding(minimum, msg.sender);
-        deployedCampaigns.push(newCampaign);
+    
+    struct Voter{
+        string FirstName;
+        string LastName;
+        string AadharCardNumber;
+        uint Age;
+        string MobileNumber;
     }
     
-    function getDeployedContracts() public view returns(address[]) {
-        return deployedCampaigns;
-    }
-}
-
-contract Crowdfunding {
-    
-    struct Request {
-        string description;
-        uint256 value;
-        address recepient;
-        bool complete;
-        uint approvalCount;
-        mapping(address => bool) approvals;
-        
-    }
-    
-    Request[] public requests;
+    Voter[] public voters;
     address public manager;
-    uint256 public minimumContribution;
-    mapping(address => bool) public approvers;
-    uint approversCount;
     
-    
-    modifier restricted(){
-        require(msg.sender==manager);
-        _;
+    constructor () public{
+        manager = msg.sender;
     }
     
-    
-    constructor (uint minimum, address sender) public{
-        manager = sender;
-        minimumContribution = minimum;
-    }
-    
-    function contribute() public payable{
-        require(msg.value > minimumContribution);
-        
-        approvers[msg.sender] = true;
-        approversCount++;
-    }
-    
-    function createRequest(string d , uint256 v, address r) public restricted{
-        Request memory newRequest = Request({
-            description: d,
-            value: v,
-            recepient: r,
-            complete: false,
-            approvalCount: 0
+    function register(string memory firstname,string memory lastname,string memory Aadharnumber,uint age,string memory mobilenumber) public{
+        Voter memory newVoter = Voter({
+            FirstName: firstname,
+            LastName: lastname,
+            AadharCardNumber: Aadharnumber,
+            Age: age,
+            MobileNumber: mobilenumber
         });
-        requests.push(newRequest);
+        
+        voters.push(newVoter);
     }
     
-    function approveRequest(uint256 index) public{
-        Request storage request = requests[index];
-        
-        require(approvers[msg.sender]);
-        require(!request.approvals[msg.sender]);
-        
-        request.approvals[msg.sender] = true;
-        request.approvalCount++;
-        
-    }
-    
-    function finalizeRequest(uint index) public restricted{
-        Request storage request = requests[index];
-        require(request.approvalCount > approversCount/2);
-        require(!request.complete);
-        
-        request.recepient.transfer(request.value);
-        request.complete = true;   
+    function display(uint index) public view returns(string memory, string memory){
+        return (
+            voters[index].FirstName,
+            voters[index].LastName
+            );
     }
     
 }
